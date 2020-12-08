@@ -201,3 +201,48 @@ piped_data = flights_pipe.fit(model_data).transform(model_data)
 
 # Split the data into training and test sets
 training, test = piped_data.randomSplit([0.6,0.4])
+
+# Select all the unique council voters
+voter_df = df.select(df["VOTER NAME"]).distinct()
+
+# Count the rows in voter_df
+print("\nThere are %d rows in the voter_df DataFrame.\n" % voter_df.count())
+
+# Add a ROW_ID
+voter_df = voter_df.withColumn('ROW_ID', F.monotonically_increasing_id())
+
+# Show the rows with 10 highest IDs in the set
+voter_df.orderBy(voter_df.ROW_ID.desc()).show(10)
+
+To check the number of partitions, use the method .rdd.getNumPartitions() on a DataFrame.
+
+print("\nThere are %d partitions in the voter_df DataFrame.\n" % voter_df.rdd.getNumPartitions())
+
+# Removing commented lines
+# Import the file to a DataFrame and perform a row count
+annotations_df = spark.read.csv('annotations.csv.gz', sep='|')
+full_count = annotations_df.count()
+
+# Count the number of rows beginning with '#'
+comment_count = annotations_df.filter(col('_c0').startswith('#')).count()
+
+# Import the file to a new DataFrame, without commented rows
+no_comments_df = spark.read.csv('annotations.csv.gz', sep='|', comment='#')
+
+# Count the new DataFrame and verify the difference is as expected
+no_comments_count = no_comments_df.count()
+print("Full count: %d\nComment count: %d\nRemaining count: %d" % (full_count, comment_count, no_comments_count))
+
+# Removing invalid rows
+# Split _c0 on the tab character and store the list in a variable
+tmp_fields = F.split(annotations_df['_c0'], '\t')
+
+# Create the colcount column on the DataFrame
+annotations_df = annotations_df.withColumn('colcount', F.size(tmp_fields))
+
+# Remove any rows containing fewer than 5 fields
+annotations_df_filtered = annotations_df.filter(~ (annotations_df.colcount<5))
+
+# Count the number of rows
+final_count = annotations_df_filtered.count()
+print("Initial count: %d\nFinal count: %d" % (initial_count, final_count))
